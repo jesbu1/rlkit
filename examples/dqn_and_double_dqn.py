@@ -3,6 +3,7 @@ Run DQN on CartPole-v0.
 """
 
 import gym
+import gym_minigrid
 from torch import nn as nn
 
 from rlkit.exploration_strategies.base import \
@@ -19,8 +20,10 @@ from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 
 
 def experiment(variant):
-    expl_env = gym.make('CartPole-v0').env
-    eval_env = gym.make('CartPole-v0').env
+    #expl_env = gym.make('CartPole-v0').env
+    #eval_env = gym.make('CartPole-v0').env
+    expl_env = gym.make('MiniGrid-FourRoomsSkills-v0', train=True, skills=[[2,2,2], [1,1,1], [0,0,0], [1], [2], [0], [1,2,0], [0,1,2]])
+    eval_env = gym.make('MiniGrid-FourRoomsSkills-v0', train=True, skills=[[2,2,2], [1,1,1], [0,0,0], [1], [2], [0], [1,2,0], [0,1,2]])
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.n
 
