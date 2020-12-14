@@ -4,6 +4,7 @@ Run DQN on CartPole-v0.
 
 import gym
 import gym_minigrid
+import random
 from torch import nn as nn
 
 from rlkit.exploration_strategies.base import \
@@ -11,10 +12,11 @@ from rlkit.exploration_strategies.base import \
 from rlkit.exploration_strategies.epsilon_greedy import EpsilonGreedy
 from rlkit.policies.argmax import ArgmaxDiscretePolicy
 from rlkit.torch.dqn.dqn import DQNTrainer
+from rlkit.torch.dqn.double_dqn import DoubleDQNTrainer
 from rlkit.torch.networks import Mlp
 import rlkit.torch.pytorch_util as ptu
 from rlkit.data_management.env_replay_buffer import EnvReplayBuffer
-from rlkit.launchers.launcher_util import setup_logger
+from rlkit.launchers.launcher_util import setup_logger, set_seed
 from rlkit.samplers.data_collector import MdpPathCollector
 from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 
@@ -22,18 +24,20 @@ from rlkit.torch.torch_rl_algorithm import TorchBatchRLAlgorithm
 def experiment(variant):
     #expl_env = gym.make('CartPole-v0').env
     #eval_env = gym.make('CartPole-v0').env
-    expl_env = gym.make('MiniGrid-FourRoomsSkills-v0', train=True, skills=[[2,2,2], [1,1,1], [0,0,0], [1], [2], [0], [1,2,0], [0,1,2]])
-    eval_env = gym.make('MiniGrid-FourRoomsSkills-v0', train=True, skills=[[2,2,2], [1,1,1], [0,0,0], [1], [2], [0], [1,2,0], [0,1,2]])
+    skills = variant['env_kwargs']['skills']
+    train = variant['env_kwargs']['train']
+    expl_env = gym.make('MiniGrid-FourRoomsSkills-v0', train=train, skills=skills)
+    eval_env = gym.make('MiniGrid-FourRoomsSkills-v0', train=train, skills=skills)
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.n
 
     qf = Mlp(
-        hidden_sizes=[32, 32],
+        hidden_sizes=[64, 64],
         input_size=obs_dim,
         output_size=action_dim,
     )
     target_qf = Mlp(
-        hidden_sizes=[32, 32],
+        hidden_sizes=[64, 64],
         input_size=obs_dim,
         output_size=action_dim,
     )
@@ -71,6 +75,7 @@ def experiment(variant):
         **variant['algorithm_kwargs']
     )
     algorithm.to(ptu.device)
+    set_seed(variant['seed'])
     algorithm.train()
 
 
@@ -79,22 +84,26 @@ if __name__ == "__main__":
     variant = dict(
         algorithm="DQN",
         version="normal",
-        layer_size=256,
         replay_buffer_size=int(1E6),
+        seed=random.randint(0, 100000),
         algorithm_kwargs=dict(
-            num_epochs=3000,
+            num_epochs=1000,
             num_eval_steps_per_epoch=5000,
-            num_trains_per_train_loop=1000,
+            num_trains_per_train_loop=500,
             num_expl_steps_per_train_loop=1000,
             min_num_steps_before_training=1000,
-            max_path_length=1000,
+            max_path_length=100,
             batch_size=256,
         ),
         trainer_kwargs=dict(
             discount=0.99,
             learning_rate=3E-4,
         ),
+        env_kwargs=dict(
+            skills=[[2,2,2], [1,1,1], [0,0,0], [1], [2], [0], [1,2,0], [0,1,2], [0,1,1,1,1,1], [0,2,2,2,2,2], [2,2,2,2], [2,2,2,1,1,2]],
+            train=True,
+        )
     )
-    setup_logger('dqn-CartPole', variant=variant)
+    setup_logger('dqn-MinigridFourRoomsSkills', variant=variant)
     # ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
     experiment(variant)
